@@ -1,0 +1,19 @@
+---
+title: "Stat380FinalReport"
+author: "Dhruv Nasit, Felicia Vijayarangam, Joseph Doan, and Eric Feng"
+format: pdf
+editor: visual
+echo: false
+---
+
+1.  **Introduction** – Provide background and motivation for your project. Clearly state yourresearch question: what you are trying to learn or answer from your dataset.
+
+2.  **Data Description** – Describe your dataset, including its source, key variables. Include EDA and any preprocessing, cleaning, or feature engineering steps, if applicable.
+
+3.  **Methodology** – Explain the statistical learning methods you used in detail, and briefly discuss why you chose them. At least one method should be something covered in class, and at least one should be new or extended beyond class material.
+
+4.  **Data Analysis Results** – Present and interpret your main findings. Include relevant figures and tables that support your discussion.
+
+5.  **Conclusion** – Summarize the key takeaways, note any limitations, and suggest possible extensions or future directions.
+
+6.  **Author Contribution Statement** – Briefly describe each team member’s contribution.
