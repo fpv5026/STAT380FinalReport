@@ -5,9 +5,9 @@ library(gridExtra)
 # -----------------------------
 # 1. Load datasets
 # -----------------------------
-cpi  <- read_csv("/Users/dhruvnasit/Desktop/380 cleaned dataset/cpi_cleaned.csv")
-fed  <- read_csv("/Users/dhruvnasit/Desktop/380 cleaned dataset/fed_rate_cleaned.csv")
-unemp <- read_csv('/Users/dhruvnasit/Desktop/380 cleaned dataset/unemployment_cleaned.csv')
+cpi  <- read_csv("cpi_cleaned.csv")
+fed  <- read_csv("fed_rate_cleaned.csv")
+unemp <- read_csv('unemployment_cleaned.csv')
 
 # -----------------------------
 # 2. Convert dates + compute Diff
