@@ -6,9 +6,230 @@ editor: visual
 echo: false
 ---
 
-1.  **Introduction** – Provide background and motivation for your project. Clearly state yourresearch question: what you are trying to learn or answer from your dataset.
+1.  **Introduction**
+
+    Our project focuses on the United States' market. We know that financial markets are sensitive to not only the contemporary economy state, but also how new information compares to what investors expected. The macroeconomic announcements like the Consumer Price Index (CPI), the unemployment rate, and Federal Reserve interest rate decisions are among the most closely monitored. These events are important because they can change expectations about inflation, economic growth, and future interest rates. When these pivotal changes are apparent, investors may adjust their portfolios, which can cause the stock market volatility to go either up or down.
+
+    In this project, we want to study the affects of these macroeconomic announcements towards the short-term volatility in the U.S stock market. We would be using the SPDR S&P 500 ETF (SPY) as our overall representation of the stock market. Instead of just looking at the average returns, we focus on the realized volatility around the macroeconomic announcement dates. We compute a 5-day rolling volatility measure using daily SPY logs returns and then examine how this volatility behaves before and after CPI, unemployment, and Federal funds rate releases.
+
+    Our main research question is: "How do month-to-month changes in key U.S. macroeconomic indicators (CPI, unemployment, and the Federal funds rate) relate to the short-term changes in SPY volatility around announcement dates?"
+
+    As a group, we were motivated to work on this topic because many of us are interested in learning about investing and follow macroeconomic news. We regularly see headlines in articles and television about CPI, unemployment, and Fed decisions "moving the market", but we want to closely see the effect of each of these events carefully by using data to prove its importance to the volatility of the market. This topic also lets us apply several methods we learned from STAT 380. For example, we can use regression and expand into time series models to measure these effects. In this way, the project is both personally interesting to us and a good practice to use what we learn in class to real-world situations.
 
 2.  **Data Description** – Describe your dataset, including its source, key variables. Include EDA and any preprocessing, cleaning, or feature engineering steps, if applicable.
+
+    ```{r}
+    library(tidyverse)
+    library(lubridate)
+    library(gridExtra)
+
+    # -----------------------------
+    # 1. Load datasets
+    # -----------------------------
+    cpi <- read.csv("/Users/felic/Downloads/cpi_cleaned.csv")
+    fed <- read.csv("/Users/felic/Downloads/fed_rate_cleaned.csv")
+    unemp <- read.csv('/Users/felic/Downloads/unemployment_cleaned.csv')
+    spy <- read.csv("/Users/felic/Downloads/SPY_data.csv")
+
+    # -----------------------------
+    # 2. Convert dates + compute Diff
+    # -----------------------------
+    process_macro <- function(df, name) {
+      df %>%
+        mutate(
+          Date = as.Date(Date, format = "%b %d, %Y"),
+          Diff = Actual - Previous,
+          Indicator = name
+        )
+    }
+
+    cpi  <- process_macro(cpi, "CPI")
+    fed  <- process_macro(fed, "Fed")
+    unemp <- process_macro(unemp, "Unemployment")
+
+    macro_all <- bind_rows(cpi, fed, unemp)
+
+    # -----------------------------
+    # 3. Summary statistics
+    # -----------------------------
+    summary_stats <- macro_all %>%
+      group_by(Indicator) %>%
+      summarise(
+        n = n(),
+        mean_actual = mean(Actual, na.rm = TRUE),
+        sd_actual   = sd(Actual, na.rm = TRUE),
+        mean_diff   = mean(Diff, na.rm = TRUE),
+        sd_diff     = sd(Diff, na.rm = TRUE),
+        min_diff    = min(Diff, na.rm = TRUE),
+        max_diff    = max(Diff, na.rm = TRUE)
+      )
+
+    print(summary_stats)
+
+    # -----------------------------
+    # 4. Time-series plots of Diff
+    # -----------------------------
+    p_cpi <- ggplot(cpi, aes(Date, Diff)) +
+      geom_line(color = "orange") +
+      labs(title = "CPI Month-to-Month Change (Diff)",
+           y = "Actual - Previous", x = "")
+
+    p_fed <- ggplot(fed, aes(Date, Diff)) +
+      geom_line(color = "steelblue") +
+      labs(title = "Fed Funds Rate Change (Diff)",
+           y = "Actual - Previous", x = "")
+
+    p_unemp <- ggplot(unemp, aes(Date, Diff)) +
+      geom_line(color = "darkgreen") +
+      labs(title = "Unemployment Rate Change (Diff)",
+           y = "Actual - Previous", x = "")
+
+    grid.arrange(p_cpi, p_fed, p_unemp, ncol = 1)
+
+    ```
+
+    **CPI Month-to-Month Change (Diff)**
+
+    **What the plot shows**
+
+    This plot displays the month-to-month change in the Core CPI (Actual − Previous) from 1999 to 2025. Each point shows how much inflation changed from the prior month.
+
+    **Interpretation**
+
+    CPI changes are very small and stable, almost always between −0.2 and +0.2. This indicates that inflation moves gradually, with very few large shocks. Notable drops occur during financial crises (2008) and the COVID period (2020), but otherwise CPI is smooth and predictable. Because CPI changes are so modest, their impact on market volatility is likely weaker and more subtle compared to the Fed announcements.
+
+    **Fed Funds Rate Change (Diff)**
+
+    **What the plot shows**
+
+    This plot shows month-to-month changes in the Federal Funds Rate determined by the Federal Reserve, represented as Actual − Previous across Fed meeting dates.
+
+    **Interpretation**
+
+    Fed rate changes are infrequent but large. Long stretches of zero change are followed by sudden rate hikes or cuts, especially around recessionary periods (early 2000s, 2008–2009) and during the COVID crash (2020). These “jump” behaviors indicate that Fed decisions introduce significant shocks into financial markets. This makes the Fed Funds Rate one of the most influential macro indicators for market volatility.
+
+    **Unemployment Rate Change (Diff)**
+
+    **What the plot shows**
+
+    This line plot shows the month-to-month change in the U.S. unemployment rate from 1999 to 2025.
+
+    **Interpretation**
+
+    Unemployment changes are extremely stable, typically moving only ±0.1 month-to-month. The single massive spike in 2020 reflects the COVID employment crisis, where unemployment rose sharply in one month. Outside of this event, unemployment tends to change very slowly. Because unemployment rarely jumps, it likely has the weakest short-term effect on SPY volatility except during extreme economic disruptions.\
+
+    ```{r}
+    # -----------------------------
+    # 5. Histogram for Diff by indicator
+    # -----------------------------
+    ggplot(macro_all, aes(Diff, fill = Indicator)) +
+      geom_histogram(alpha = 0.6, bins = 40) +
+      facet_wrap(~Indicator, scales = "free") +
+      labs(title = "Distribution of Month-to-Month Changes (Diff)",
+           x = "Diff", y = "Count") +
+      theme_minimal()
+
+    ```
+
+    **Distribution of Month-to-Month Changes (Histograms)**
+
+    **What the plot shows**
+
+    Three histograms (CPI, Fed, Unemployment) visualize the distribution of their Diff values (Actual − Previous).
+
+    **Interpretation**
+
+    -   **CPI:** Very tight symmetric distribution around zero, indicating consistent and predictable monthly changes.
+
+    -   **Fed:** Clustered at zero, with occasional strong positive or negative changes, showing the Fed creates discrete shocks.
+
+    -   **Unemployment:** Extremely concentrated at zero except for a few rare large jumps, especially the COVID spike.
+
+    These distributions highlight that macro indicators have very different statistical behaviors, supporting treating them as separate predictors in the model.
+
+    ```{r}
+    # -----------------------------
+    # 6. Boxplots to compare volatility of Diff
+    # -----------------------------
+    ggplot(macro_all, aes(Indicator, Diff, fill = Indicator)) +
+      geom_boxplot(alpha = 0.7) +
+      labs(title = "Comparison of Diff Across Indicators",
+           y = "Month-to-Month Change (Diff)", x = "") +
+      theme_minimal()
+
+
+    ```
+
+    **Boxplot Comparison Across Indicators**
+
+    **What the plot shows**
+
+    This boxplot compares the variance and outliers in Diff across CPI, Fed Funds Rate, and Unemployment Rate.
+
+    **Interpretation**
+
+    CPI has the smallest range with minimal outliers, reflecting stable inflation. The Fed series shows larger spread and multiple outliers, indicating significant rate adjustments. Unemployment has one extreme outlier (COVID spike) but otherwise behaves similarly to CPI. These differences confirm that each macro indicator has a distinct volatility pattern, which directly affects how markets respond to each announcement.
+
+    ```{r}
+    # -----------------------------
+    # 7. Overlay all 3 indicators’ Diff in one plot
+    # -----------------------------
+    ggplot(macro_all, aes(Date, Diff, color = Indicator)) +
+      geom_line(alpha = 0.8) +
+      labs(title = "Overlay of Diff for CPI, Fed, Unemployment",
+           y = "Actual - Previous", x = "") +
+      theme_minimal()
+
+
+    ```
+
+    **Overlay of Diff for CPI, Fed, and Unemployment**
+
+    **What the plot shows**
+
+    All three Diff series are plotted together to show how they behave over time and relative to each other.
+
+    **Interpretation**
+
+    All three indicators remain close to zero most of the time, but the Fed series exhibits sudden jumps, and unemployment has one massive spike in 2020. CPI fluctuates within a very narrow band. The overlay makes the structural contrast clear: Fed decisions cause jump shocks; CPI is smooth and stable; unemployment is stable except in crisis conditions. This difference justifies comparing their individual effects on SPY volatility.
+
+    ```{r}
+    # -----------------------------
+    # 8. Scatter: Actual vs Previous
+    # -----------------------------
+    ggplot(macro_all, aes(Previous, Actual, color = Indicator)) +
+      geom_point(alpha = 0.7) +
+      geom_smooth(method = "lm", se = FALSE) +
+      labs(title = "Actual vs Previous by Indicator",
+           x = "Previous", y = "Actual") +
+      theme_minimal()
+
+    ```
+
+    **Actual vs Previous Scatterplot**
+
+    **What the plot shows**
+
+    This scatterplot shows the relationship between the current month’s value (Actual) and the previous month’s value (Previous) for CPI, Fed, and Unemployment.
+
+    **Interpretation**
+
+    All three indicators lie almost perfectly along a 45-degree line, meaning Actual ≈ Previous for most months. This strong autocorrelation confirms that these macroeconomic indicators move slowly over time, with rare large jumps. Because of this, the month-to-month difference (Diff) captures essentially all meaningful new information, validating its use as the key predictor in the volatility model.
+
+    ```{r}
+    # -----------------------------
+    # 9. Missingness check
+    # -----------------------------
+    missing_summary <- macro_all %>%
+      summarise(
+        missing_actual = sum(is.na(Actual)),
+        missing_previous = sum(is.na(Previous)),
+        missing_diff = sum(is.na(Diff))
+      )
+
+    print(missing_summary)
+
+    ```
 
 3.  **Methodology** – Explain the statistical learning methods you used in detail, and briefly discuss why you chose them. At least one method should be something covered in class, and at least one should be new or extended beyond class material.
 
