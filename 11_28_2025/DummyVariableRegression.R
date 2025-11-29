@@ -11,16 +11,16 @@ library(broom)
 # -------------------------
 # 1. Load Data 
 # -------------------------
-cpi <- read_csv("/Users/felic/Downloads/cpi_cleaned.csv") %>%
+cpi <- read_csv("cpi_cleaned.csv") %>%
   mutate(Date = as.Date(Date, format = "%b %d, %Y"))
 
-unemp <- read_csv("/Users/felic/Downloads/unemployment_cleaned.csv") %>%
+unemp <- read_csv("unemployment_cleaned.csv") %>%
   mutate(Date = as.Date(Date, format = "%b %d, %Y"))
 
-ffr <- read_csv("/Users/felic/Downloads/fed_rate_cleaned.csv") %>%
+ffr <- read_csv("fed_rate_cleaned.csv") %>%
   mutate(Date = as.Date(Date, format = "%b %d, %Y"))
 
-spy <- read.csv("C:/Users/felic/Downloads/SPY_data.csv") %>%
+spy <- read.csv("C:/Users/josep/OneDrive/Documents/GitHub/STAT380FinalReport/SPY_data.csv") %>%
   rename(Date = X) %>% 
   mutate(Date = as.Date(Date))
 
