@@ -2,6 +2,15 @@
 title: "Stat380FinalReport"
 author: "Dhruv Nasit, Felicia Vijayarangam, Joseph Doan, and Eric Feng"
 format: pdf
+fig-width: 10
+fig-height: 3
+linestretch: 1
+documentclass: article 
+indent: false
+margin-top: 1in
+margin-bottom: 1in
+margin-left: 1in
+margin-right: 1in
 editor: visual
 echo: false
 warning: false
