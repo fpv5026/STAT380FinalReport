@@ -1,0 +1,344 @@
+---
+title: "Stat380FinalReport"
+author: "Dhruv Nasit, Felicia Vijayarangam, Joseph Doan, and Eric Feng"
+format: pdf
+fig-width: 10
+fig-height: 3
+linestretch: 1
+documentclass: article 
+indent: false
+margin-top: 1in
+margin-bottom: 1in
+margin-left: 1in
+margin-right: 1in
+editor: visual
+echo: false
+warning: false
+message: false
+---
+
+1.  **Introduction**
+
+    Our project focuses on the United States' market. We know that financial markets are sensitive to not only the contemporary economy state, but also how new information compares to what investors expected. The macroeconomic announcements like the Consumer Price Index (CPI), the unemployment rate, and Federal Reserve interest rate decisions are among the most closely monitored. These events are important because they can change expectations about inflation, economic growth, and future interest rates. When these pivotal changes are apparent, investors may adjust their portfolios, which can cause the stock market volatility to go either up or down.
+
+    In this project, we want to study the affects of these macroeconomic announcements towards the short-term volatility in the U.S stock market. We would be using the SPDR S&P 500 ETF (SPY) as our overall representation of the stock market. Instead of just looking at the average returns, we focus on the realized volatility around the macroeconomic announcement dates.
+
+    We compute daily log returns for SPY and use the absolute value of these returns as a daily volatility proxy. We then examine how this volatility behaves before and after CPI, unemployment, and federal funds rate announcements.
+
+    Our main research question is: "How do month-to-month changes in key U.S. macroeconomic indicators (CPI, unemployment, and the Federal funds rate) relate to the short-term changes in SPY volatility around announcement dates?"
+
+    As a group, we were motivated to work on this topic because many of us are interested in learning about investing and follow macroeconomic news. We regularly see headlines in articles and television about CPI, unemployment, and Fed decisions "moving the market", but we want to closely see the effect of each of these events carefully by using data to prove its importance to the volatility of the market. This topic also lets us apply several methods we learned from STAT 380. For example, we can use regression and expand into time series models to measure these effects. In this way, the project is both personally interesting to us and a good practice to use what we learn in class to real-world situations.
+
+2.  **Data Description** –
+
+    We have four datasets that we are looking at: CPI, Federal Fund Rate, Unemployment, and SPY.
+
+    For the CPI, Federal Fund Rate, and Unemployment datasets, they each follow this data structure.
+
+    ```{r}
+    library(tidyverse)
+    library(lubridate)
+    library(gridExtra)
+
+    # -----------------------------
+    # 1. Load datasets
+    # -----------------------------
+    cpi <- read.csv("cpi_cleaned.csv")
+    fed <- read.csv("fed_rate_cleaned.csv")
+    unemp <- read.csv('unemployment_cleaned.csv')
+    spy <- read.csv("SPY_data.csv")
+
+    head(cpi, 2)
+
+    ```
+
+    The variables are Date, Actual, and Previous.
+
+    Date: The date in which the CPI, Federal Fund Rate, or Unemployment is released.
+
+    *Notice that the Federal Fund Rate is only released 8 times per years because is based on the Federal Open Market Committee.*
+
+    Actual: The new value
+
+    *Notice that for CPI the actual value is the previous months CPI. For example Oct 24, 2025 releases the CPI for September NOT October. Therefore, when interpreting, understand we are looking at how the previous months consumer spending affects the market volatility*
+
+    Previous: Previous time periods amount
+
+    In the SPY dataset, the variables are the following:
+
+    ```{r}
+    head(spy, 2)
+    ```
+
+    The variables are X, SPY.Open, SPY.High, SPY.Low, SPY.Close, SPY.Volume, and SPY.Adjusted.
+
+    X: Date
+
+    Since we are looking at market volatility, we will need to compute the daily log returns.
+
+    Daily log returns = ln (SPY.Adjusted day/SPY.Adjusted previous day).
+
+    We need to take the absolute value for the daily volatility proxy. Once we compute this, we create a new column called spy_vol
+
+    ```{r}
+    spy <- spy %>%
+      arrange(X) %>%
+      mutate(ret = log(SPY.Adjusted / lag(SPY.Adjusted)),
+             spy_vol = abs(ret))
+    colnames(spy)
+    ```
+
+    **Check for NA values**
+
+    -   CPI has two missing values (actual Oct 24, 2025 and previous Nov 1, 1999).
+
+    -   Federal Reserve Rate has two missing values (actual Dec 10, 2025 and previous Jun 30, 1999)
+
+    -   Unemployment has two missing values (actual Nov 20, 2025 and previous May 1, 1999)
+
+    -   SPY has two missing value (ret and spy_vol Jan 3, 2000)
+
+    Since each dataset has only two missing values in 1999 and 2025, we will drop these rows.
+
+    ```{r, results='hide'}
+    cpi %>% 
+      filter(is.na(Actual) | is.na(Previous)) %>%
+      select(Date, Actual, Previous)
+    fed %>% 
+      filter(is.na(Actual) | is.na(Previous)) %>%
+      select(Date, Actual, Previous)
+    unemp %>% 
+      filter(is.na(Actual) | is.na(Previous)) %>%
+      select(Date, Actual, Previous)
+    spy %>%
+      filter(if_any(everything(), is.na)) %>%
+      select(X, everything())
+    ```
+
+    ```{r}
+    spy <- spy %>% 
+      drop_na()
+    fed <- fed %>% 
+      drop_na()
+    unemp <- unemp %>% 
+      drop_na()
+    cpi <- cpi %>% 
+      drop_na()
+    ```
+
+    Next, we will merge all the data together into a dataset called macro_all in conducting EDA.
+
+    In order to do this, we will change the date formatting to year-month-day, add a new difference column (Actual - Previous), and create a name indicator column (CPI, Fed, Unemployment).
+
+    ```{r}
+    # -----------------------------
+    # 2. Convert dates + compute Diff
+    # -----------------------------
+    process_macro <- function(df, name) {
+      df %>%
+        mutate(
+          Date = as.Date(Date, format = "%b %d, %Y"),
+          Diff = Actual - Previous,
+          Indicator = name
+        )
+    }
+
+    cpi  <- process_macro(cpi, "CPI")
+    fed  <- process_macro(fed, "Fed")
+    unemp <- process_macro(unemp, "Unemployment")
+    macro_all <- bind_rows(cpi, fed, unemp)
+
+    head(macro_all, 1)
+
+    ```
+
+    **Summary Statistics**
+
+    ```{r}
+
+    # -----------------------------
+    # 3. Summary statistics
+    # -----------------------------
+    summary_stats <- macro_all %>%
+      group_by(Indicator) %>%
+      summarise(
+        n = n(),
+        mean_actual = mean(Actual, na.rm = TRUE),
+        sd_actual   = sd(Actual, na.rm = TRUE),
+        mean_diff   = mean(Diff, na.rm = TRUE),
+        sd_diff     = sd(Diff, na.rm = TRUE),
+        min_diff    = min(Diff, na.rm = TRUE),
+        max_diff    = max(Diff, na.rm = TRUE)
+      )
+
+    print(summary_stats)
+    ```
+
+    **CPI Month-to-Month Change (Diff)**
+
+    ```{r}
+    # -----------------------------
+    # 4. Time-series plots of Diff
+    # -----------------------------
+    p_cpi <- ggplot(cpi, aes(Date, Diff)) +
+      geom_line(color = "orange") +
+      labs(title = "CPI Month-to-Month Change (Diff)",
+           y = "Actual - Previous", x = "")
+
+    grid.arrange(p_cpi, ncol = 1)
+    ```
+
+    **What the plot shows**
+
+    This plot displays the month-to-month change in the Core CPI (Actual − Previous) from 1999 to 2025. Each point shows how much inflation changed from the prior month.
+
+    **Interpretation**
+
+    CPI changes are very small and stable, almost always between −0.2 and +0.2. This indicates that inflation moves gradually, with very few large shocks. Notable drops occur during financial crises (2008) and the COVID period (2020), but otherwise CPI is smooth and predictable. Because CPI changes are so modest, their impact on market volatility is likely weaker and more subtle compared to the Fed announcements.
+
+    **Fed Funds Rate Change (Diff)**
+
+    ```{r}
+    p_fed <- ggplot(fed, aes(Date, Diff)) +
+      geom_line(color = "steelblue") +
+      labs(title = "Fed Funds Rate Change (Diff)",
+           y = "Actual - Previous", x = "")
+    grid.arrange(p_fed, ncol = 1)
+    ```
+
+    **What the plot shows**
+
+    This plot shows month-to-month changes in the Federal Funds Rate determined by the Federal Reserve, represented as Actual − Previous across Fed meeting dates.
+
+    **Interpretation**
+
+    Fed rate changes are infrequent but large. Long stretches of zero change are followed by sudden rate hikes or cuts, especially around recessionary periods (early 2000s, 2008–2009) and during the COVID crash (2020). These “jump” behaviors indicate that Fed decisions introduce significant shocks into financial markets. This makes the Fed Funds Rate one of the most influential macro indicators for market volatility.
+
+    **Unemployment Rate Change (Diff)**
+
+    ```{r}
+    p_unemp <- ggplot(unemp, aes(Date, Diff)) +
+      geom_line(color = "darkgreen") +
+      labs(title = "Unemployment Rate Change (Diff)",
+           y = "Actual - Previous", x = "")
+    grid.arrange(p_unemp, ncol = 1)
+    ```
+
+    **What the plot shows**
+
+    This line plot shows the month-to-month change in the U.S. unemployment rate from 1999 to 2025.
+
+    **Interpretation**
+
+    Unemployment changes are extremely stable, typically moving only ±0.1 month-to-month. The single massive spike in 2020 reflects the COVID employment crisis, where unemployment rose sharply in one month. Outside of this event, unemployment tends to change very slowly. Because unemployment rarely jumps, it likely has the weakest short-term effect on SPY volatility except during extreme economic disruptions.\
+
+    **Distribution of Month-to-Month Changes (Histograms)**
+
+    ```{r}
+    # -----------------------------
+    # 5. Histogram for Diff by indicator
+    # -----------------------------
+    ggplot(macro_all, aes(Diff, fill = Indicator)) +
+      geom_histogram(alpha = 0.6, bins = 40) +
+      facet_wrap(~Indicator, scales = "free") +
+      labs(title = "Distribution of Month-to-Month Changes (Diff)",
+           x = "Diff", y = "Count") +
+      theme_minimal()
+
+    ```
+
+    **What the plot shows**
+
+    Three histograms (CPI, Fed, Unemployment) visualize the distribution of their Diff values (Actual − Previous).
+
+    **Interpretation**
+
+    -   **CPI:** Very tight symmetric distribution around zero, indicating consistent and predictable monthly changes.
+
+    -   **Fed:** Clustered at zero, with occasional strong positive or negative changes, showing the Fed creates discrete shocks.
+
+    -   **Unemployment:** Extremely concentrated at zero except for a few rare large jumps, especially the COVID spike.
+
+    These distributions highlight that macro indicators have very different statistical behaviors, supporting treating them as separate predictors in the model.
+
+    **Boxplot Comparison Across Indicators**
+
+    ```{r}
+    # -----------------------------
+    # 6. Boxplots to compare volatility of Diff
+    # -----------------------------
+    ggplot(macro_all, aes(Indicator, Diff, fill = Indicator)) +
+      geom_boxplot(alpha = 0.7) +
+      labs(title = "Comparison of Diff Across Indicators",
+           y = "Month-to-Month Change (Diff)", x = "") +
+      theme_minimal()
+
+
+    ```
+
+    **What the plot shows**
+
+    This boxplot compares the variance and outliers in Diff across CPI, Fed Funds Rate, and Unemployment Rate.
+
+    **Interpretation**
+
+    CPI has the smallest range with minimal outliers, reflecting stable inflation. The Fed series shows larger spread and multiple outliers, indicating significant rate adjustments. Unemployment has one extreme outlier (COVID spike) but otherwise behaves similarly to CPI. These differences confirm that each macro indicator has a distinct volatility pattern, which directly affects how markets respond to each announcement.
+
+    **Overlay of Diff for CPI, Fed, and Unemployment**
+
+    ```{r}
+    # -----------------------------
+    # 7. Overlay all 3 indicators’ Diff in one plot
+    # -----------------------------
+    ggplot(macro_all, aes(Date, Diff, color = Indicator)) +
+      geom_line(alpha = 0.8) +
+      labs(title = "Overlay of Diff for CPI, Fed, Unemployment",
+           y = "Actual - Previous", x = "") +
+      theme_minimal()
+    ```
+
+    **What the plot shows**
+
+    All three Diff series are plotted together to show how they behave over time and relative to each other.
+
+    **Interpretation**
+
+    All three indicators remain close to zero most of the time, but the Fed series exhibits sudden jumps, and unemployment has one massive spike in 2020. CPI fluctuates within a very narrow band. The overlay makes the structural contrast clear: Fed decisions cause jump shocks; CPI is smooth and stable; unemployment is stable except in crisis conditions. This difference justifies comparing their individual effects on SPY volatility.
+
+    **Actual vs Previous Scatterplot**
+
+    ```{r}
+    # -----------------------------
+    # 8. Scatter: Actual vs Previous
+    # -----------------------------
+    ggplot(macro_all, aes(Previous, Actual, color = Indicator)) +
+      geom_point(alpha = 0.7) +
+      geom_smooth(method = "lm", se = FALSE) +
+      labs(title = "Actual vs Previous by Indicator",
+           x = "Previous", y = "Actual") +
+      theme_minimal()
+    ```
+
+    **What the plot shows**
+
+    This scatterplot shows the relationship between the current month’s value (Actual) and the previous month’s value (Previous) for CPI, Fed, and Unemployment.
+
+    **Interpretation**
+
+    All three indicators lie almost perfectly along a 45-degree line, meaning Actual ≈ Previous for most months. This strong autocorrelation confirms that these macroeconomic indicators move slowly over time, with rare large jumps. Because of this, the month-to-month difference (Diff) captures essentially all meaningful new information, validating its use as the key predictor in the volatility model.
+
+3.  **Methodology**
+
+    For our other statistical model, we utilized a time-series model – which is beyond our class material. The time-series model focuses on the daily SPY volatility between 2008 and 2015. For context, this is an era where there was a global financial crisis and the following recovery years for the country. In this model, we included four datasets, as mentioned from previous sections of this paper: the daily SPY prices from SPY_data.csv, and the monthly macroeconomic data from cpi_cleaned.csv, unemployment_cleaned.csv, and fed_rate_cleaned.csv. Inside the SPY data, we did some calculations to figure out the daily log returns using the adjusted closing price, and then defined a less complex volatility representation as the absolute value of the log return for each day. This allows us to have a time series of daily volatility called spy_vol. For the other variables derived from the macroeconomic data, we created "surprise" metrics which is the difference between current release and the previous value (Actual - Previous) for each of the independent variables: CPI, unemployment, and the Federal funds rate. Later, we merged these surprises onto the daily SPY data by date. If there were days that there were no macro releases, we set these surprise values to zero so that the series remained daily and aligned with the SPY volatility data.
+
+    With the construction of the merged dataset, we reorganized it by data and split the observations into a training and test set. The training set contained 1,409 observations (70% of the data) and the test set contained the remaining 605 observations (30% of the data). All of the models that we included in this part were fitted on the training data and evaluated on the test data. To analyze the relationship between macro surprises over time and volatility, we estimated two different time-series models: an ARIMAX model, which extends the ARIMA framework, and a GARCH(1,1) model, which is a tool used for financial econometrics.
+
+    The ARIMAX model would treat the daily volatility as the response variable and uses the macro surprises and its own past behavior as the predictors. We modeled daily volatility as a regression with ARIMA errors. The ARIMA would capture autocorrelation and persistence in volatility, with the predictors being CPI, unemployment, and Fed funds rate surprises on the same day. We would use the function, auto.arima(), and the response variable being the volatility series; the three surprise variables would be included in "xreg", without a seasonal component. The function would automatically choose the AR and MA orders based on information criteria. It would evidently choose ARIMA(5,1,4). We decided to use the ARIMAX model because it helps us in understanding whether macro surprises provide extra predictive information for volatility beyond what can be explained by past volatility alone.
+
+    GARCH(1,1) was another time-series model we used, which was part of the rugarch package. In this model, the today's volatility is dependent on three things: a constant, yesterday's squared surprise, and yesterday's volatility. This is like a normal setup found in finance because it helps with modeling volatility clustering, where periods of high volatility often shows up in consecutive days instead of just a single random spike. In our project, we used a simple GARCH(1,1) model on the daily volatility series and did not include the macro surprises directly in the variance equation because we want to understand how volatility behaves on its own. For both models, the ARIMAX and GARCH models, we generated forecasts of daily volatility on the test data and evaluate how accurate they were using RMSE (root mean squared error) and MAE (mean absolute error), where a small value for both metrics means that the model's predictions are close to the true volatility.
+
+4.  **Data Analysis Results**
+
+5.  **Conclusion** – Summarize the key takeaways, note any limitations, and suggest possible extensions or future directions.
+
+6.  **Author Contribution Statement** – Briefly describe each team member’s contribution.
