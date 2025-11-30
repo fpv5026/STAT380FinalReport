@@ -608,14 +608,7 @@ message: false
     # Compute median
     vol_median <- median(data$spy_vol, na.rm = TRUE)
 
-    # Create the binary label:
-    # 1 = high volatility (above median)
-    # 0 = low volatility (at or below median)
     data$high_vol <- ifelse(data$spy_vol > vol_median, 1, 0)
-
-    # ---------------------------------------------
-    # 2. Print label summary
-    # ---------------------------------------------
 
     cat("Median of spy_vol:", vol_median, "\n\n")
 
@@ -626,7 +619,7 @@ message: false
     print(prop.table(table(data$high_vol)))
 
     cat("\nPreview of labels:\n")
-    head(data[, c("spy_vol", "high_vol")])
+    print(head(data[, c("spy_vol", "high_vol")]))
     ```
 
     ```{r}
@@ -642,7 +635,7 @@ message: false
 
     #Logistic Regression
     log_model <- glm(
-      spy_vol ~ cpi_diff + cpi_day + unemp_diff + unemp_day + fed_diff + fed_day + all_three,
+      high_vol ~ cpi_diff + cpi_day + unemp_diff + unemp_day + fed_diff + fed_day + all_three,
       data = train_data,
       family = binomial
     )
@@ -673,33 +666,40 @@ message: false
     ```
 
     ```{r}
-    #Predict on Test Set
+    # Predict probabilities of high volatility
     test_probs <- predict(log_model, newdata = test_data, type = "response")
-    test_pred  <- ifelse(test_probs > 0.5, 1, 0)
 
-    #Evaluate Model
+    # Convert probabilities → class labels using 0.5 threshold
+    test_pred <- ifelse(test_probs > 0.5, 1, 0)
 
-    # Accuracy
-    accuracy <- mean(test_pred == test_data$pos_vol)
+    # Convert to factor so confusionMatrix works
+    test_pred <- factor(test_pred, levels = c(0,1))
+    true_labels <- factor(test_data$high_vol, levels = c(0,1))
 
-    # Confusion matrix
-    conf_mat <- table(
-      Predicted = test_pred,
-      Actual = test_data$spy_vol
+
+    #Confusion Matrix + Metrics
+
+    confusionMatrix(
+      data = as.factor(test_pred),
+      reference = as.factor(true_labels),
+      positive = "1"     # high volatility = positive class
     )
 
-    # AUC
-    roc_obj <- roc(test_data$spy_vol, test_probs)
-    auc_val <- auc(roc_obj)
+    ```
 
-    #Print Results
-    cat("Logistic Regression (Positive vs Negative Volatility Change)\n")
-    cat("--------------------------------------------------------------\n")
-    cat("Accuracy: ", round(accuracy, 4), "\n")
-    cat("AUC: ", round(auc_val, 4), "\n\n")
+    ```{r}
+    library(pROC)
+    test_roc <- roc(
+      response = true_labels,          # actual labels (0/1)
+      predictor = test_probs,          # predicted probabilities
+      plot = TRUE,                     # draw ROC curve
+      print.auc = TRUE,                # print AUC on plot
+      legacy.axes = TRUE               # optional: makes axes 1–specificity
+    )
 
-    cat("Confusion Matrix:\n")
-    print(conf_mat)
+    # Extract numeric AUC
+    as.numeric(test_roc$auc)
+
     ```
 
     **Time-Series Analysis**
