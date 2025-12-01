@@ -1,20 +1,29 @@
 ---
-title: "Stat380FinalReport"
-author: "Dhruv Nasit, Felicia Vijayarangam, Joseph Doan, and Eric Feng"
-format: pdf
-fig-width: 10
-fig-height: 3
-linestretch: 1
-documentclass: article 
-indent: false
-margin-top: 1in
-margin-bottom: 1in
-margin-left: 1in
-margin-right: 1in
+title: "Stat380 Final Report Group 3"
+author:
+  - Dhruv Nasit
+  - Felicia Vijayarangam
+  - Joseph Doan
+  - Eric Feng
+
+format:
+  pdf:
+    documentclass: article
+    linestretch: 1.0
+    fig-width: 10
+    fig-height: 3
+    geometry:
+      - top=0.6in
+      - bottom=0.6in
+      - left=0.7in
+      - right=0.7in
+
 editor: visual
-echo: false
-warning: false
-message: false
+
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 1.  **Introduction**
@@ -43,10 +52,10 @@ message: false
     # -----------------------------
     # 1. Load datasets
     # -----------------------------
-    cpi <- read.csv("/Users/felic/Downloads/cpi_cleaned.csv")
-    fed <- read.csv("/Users/felic/Downloads/fed_rate_cleaned.csv")
-    unemp <- read.csv('/Users/felic/Downloads/unemployment_cleaned.csv')
-    spy <- read.csv("/Users/felic/Downloads/SPY_data.csv")
+    cpi <- read.csv("cpi_cleaned.csv")
+    fed <- read.csv("fed_rate_cleaned.csv")
+    unemp <- read.csv("unemployment_cleaned.csv")
+    spy <- read.csv("SPY_data.csv")
 
     head(cpi, 2)
 
@@ -316,33 +325,9 @@ message: false
 
     **Regression Analysis:**
 
-    Our goal is to create a multilogistical regression model where the response variable is SPY volatility and the independent variables are the CPI, Federal Fund Rate, and the Unemployment monthly difference (Actual - Predicted).
+    a\) Our goal is to create a linear regression model where the response variable is SPY volatility and the independent variables are the CPI, Federal Fund Rate, the Unemployment monthly difference (Actual - Predicted). We also have the dummy variables of whether or not the indicator came out that month.
 
     We want to specifically look at the daily SPY volatility between 2008 and 2015 because this period reflects the global financial crisis. Therefore, looking at this special time period gives us key insight into market volatility during that period.
-
-    When creating this model, we discussed how each variable (Unemployment, Federal Fund Rate, and CPI) all come out at different times throughout the month. One of the challenges in this is having a model that simultaneously looks at each of these variables. We need all these variables in one model to determine the changes in market volatility when each of these values are released.
-
-    In order to track whether or not a variable came out, we used dummy variables. Within each month, Dummy=1 indicating the value is released. The dummy variable stays till one until the beginning of the next month, where all the variables reset to Dummy=0. Knowing which information is publically aviabliable enables us to correctly analyze market volatility. We will specially be looking at the market volatility the day after the rates are released.
-
-    a\) Our first model looks at how much the market volatility changes based on each variable
-
-    b\) Next, we are going to see how the performance changes whether or not all three variables come out within that month.
-
-    *In our study, we acknowledge that these are only a few drivers of the SPY. However, for this exploration, our focus is on how much these factors move the market when they are first released*
-
-    **Time-Series Analysis:**
-
-    For our other statistical model, we utilized a time-series model – which is beyond our class material. The time-series model focuses on the daily SPY volatility between 2008 and 2015. For context, this is an era where there was a global financial crisis and the following recovery years for the country. In this model, we included four datasets, as mentioned from previous sections of this paper: the daily SPY prices from SPY_data.csv, and the monthly macroeconomic data from cpi_cleaned.csv, unemployment_cleaned.csv, and fed_rate_cleaned.csv. Inside the SPY data, we did some calculations to figure out the daily log returns using the adjusted closing price, and then defined a less complex volatility representation as the absolute value of the log return for each day. This allows us to have a time series of daily volatility called spy_vol. For the other variables derived from the macroeconomic data, we created "surprise" metrics which is the difference between current release and the previous value (Actual - Previous) for each of the independent variables: CPI, unemployment, and the Federal funds rate. Later, we merged these surprises onto the daily SPY data by date. If there were days that there were no macro releases, we set these surprise values to zero so that the series remained daily and aligned with the SPY volatility data.
-
-    With the construction of the merged dataset, we reorganized it by data and split the observations into a training and test set. The training set contained 1,409 observations (70% of the data) and the test set contained the remaining 605 observations (30% of the data). All of the models that we included in this part were fitted on the training data and evaluated on the test data. To analyze the relationship between macro surprises over time and volatility, we estimated two different time-series models: an ARIMAX model, which extends the ARIMA framework, and a GARCH(1,1) model, which is a tool used for financial econometrics.
-
-    The ARIMAX model would treat the daily volatility as the response variable and uses the macro surprises and its own past behavior as the predictors. We modeled daily volatility as a regression with ARIMA errors. The ARIMA would capture autocorrelation and persistence in volatility, with the predictors being CPI, unemployment, and Fed funds rate surprises on the same day. We would use the function, auto.arima(), and the response variable being the volatility series; the three surprise variables would be included in "xreg", without a seasonal component. The function would automatically choose the AR and MA orders based on information criteria. It would evidently choose ARIMA(5,1,4). We decided to use the ARIMAX model because it helps us in understanding whether macro surprises provide extra predictive information for volatility beyond what can be explained by past volatility alone.
-
-    GARCH(1,1) was another time-series model we used, which was part of the rugarch package. In this model, the today's volatility is dependent on three things: a constant, yesterday's squared shocked, and yesterday's volatility. This is like a normal setup found in finance because it helps with modeling volatility clustering, where periods of high volatility often shows up in consecutive days instead of just a single random spike. In our project, we used a simple GARCH(1,1) model on the daily volatility series and did not include the macro surprises directly in the variance equation because we want to understand how volatility behaves on its own. For both models, the ARIMAX and GARCH models, we generated forecasts of daily volatility on the test data and evaluate how accurate they were using RMSE (root mean squared error) and MAE (mean absolute error), where a small value for both metrics means that the model's predictions are close to the true volatility.
-
-4.  **Data Analysis Results** – Present and interpret your main findings. Include relevant figures and tables that support your discussion.
-
-    **Regression Analysis**
 
     ```{r}
     #2008-2015
@@ -363,6 +348,10 @@ message: false
       mutate(Date = as.Date(Date)) %>%   
       filter(Date >= as.Date("2008-01-01"), Date <= as.Date("2015-12-31"))
     ```
+
+    When creating this model, we discussed how each variable (Unemployment, Federal Fund Rate, and CPI) all come out at different times throughout the month. One of the challenges in this is having a model that simultaneously looks at each of these variables. We need all these variables in one model to determine the changes in market volatility when each of these values are released.
+
+    In order to track whether or not a variable came out, we used dummy variables. Within each month, Dummy=1 indicating the value is released. The dummy variable stays till one until the beginning of the next month, where all the variables reset to Dummy=0. Knowing which information is publically aviabliable enables us to correctly analyze market volatility. We will specially be looking at the market volatility the day after the rates are released.
 
     ```{r}
     #Dummy=0 prior to the monthly release
@@ -429,7 +418,6 @@ message: false
       diff = "Diff",
       prefix = "fed"
     )
-
     ```
 
     ```{r}
@@ -449,7 +437,59 @@ message: false
       )
     ```
 
+    Our first model looks at how much the market volatility changes based on each variable. Then, we will extend this to see how market volatility changes based on whether or not all three variables come out within the same month. Since market volatility is a continuous response variable, our model does not split test versus training sets. The goal is to estimate the underlying linear relationship between the economic indicators and volatility, rather than classify observations or evaluate predictive accuracy.
+
+    *In our study, we acknowledge that these are only a few drivers of the SPY. However, for this exploration, our focus is on how much these factors move the market when they are first released*
+
+    b\) Our goal is to create a multilogistical regression model where the response variable is high or low SPY volaitlity. We need to look at our market volatility distribution to see if there is a particular threshold of market volatility that we consider high versus low.
+
+    ```{r}
+    hist(
+      data$spy_vol,
+      breaks = 40,
+      main = "Distribution of SPY Daily Volatility",
+      xlab = "SPY Volatility",
+      col = "lightblue",
+      border = "white"
+    )
+
+    # Add median threshold line (used to create high_vol label)
+    abline(v = median(data$spy_vol, na.rm = TRUE),
+           col = "red", lwd = 3, lty = 2)
+
+    legend(
+      "topright",
+      legend = c("Median Threshold"),
+      col = c("red"),
+      lwd = 3,
+      lty = 2,
+      bty = "n"
+    )
+    ```
+
+    Our threshold is set to divide the spy_vol by the median. The media of spy_vol is 0.005756937. Therefore, we will consider high vol \> 0.005756937 \> low vol. There are 1030 low vol and 1029 high vol labels. We create a column called high_vol for the labels of high volatility or low volatility.
+
+    *We acknowledge that high volatility may have a different standard threshold but we are creating this model based on the median market volatility that we have observed in this dataset*
+
+    The independent variables are still the CPI, Federal Fund Rate, and the Unemployment monthly difference (Actual - Predicted). We also have the days of the release. Our model is predicting whether or not these variables can predict whether the market has high or low volatility (above or below 0.005756937)
+
+    **Time-Series Analysis:**
+
+    For our other statistical model, we utilized a time-series model – which is beyond our class material. The time-series model focuses on the daily SPY volatility between 2008 and 2015. For context, this is an era where there was a global financial crisis and the following recovery years for the country. In this model, we included four datasets, as mentioned from previous sections of this paper: the daily SPY prices from SPY_data.csv, and the monthly macroeconomic data from cpi_cleaned.csv, unemployment_cleaned.csv, and fed_rate_cleaned.csv. Inside the SPY data, we did some calculations to figure out the daily log returns using the adjusted closing price, and then defined a less complex volatility representation as the absolute value of the log return for each day. This allows us to have a time series of daily volatility called spy_vol. For the other variables derived from the macroeconomic data, we created "surprise" metrics which is the difference between current release and the previous value (Actual - Previous) for each of the independent variables: CPI, unemployment, and the Federal funds rate. Later, we merged these surprises onto the daily SPY data by date. If there were days that there were no macro releases, we set these surprise values to zero so that the series remained daily and aligned with the SPY volatility data.
+
+    With the construction of the merged dataset, we reorganized it by data and split the observations into a training and test set. The training set contained 1,409 observations (70% of the data) and the test set contained the remaining 605 observations (30% of the data). All of the models that we included in this part were fitted on the training data and evaluated on the test data. To analyze the relationship between macro surprises over time and volatility, we estimated two different time-series models: an ARIMAX model, which extends the ARIMA framework, and a GARCH(1,1) model, which is a tool used for financial econometrics.
+
+    The ARIMAX model would treat the daily volatility as the response variable and uses the macro surprises and its own past behavior as the predictors. We modeled daily volatility as a regression with ARIMA errors. The ARIMA would capture autocorrelation and persistence in volatility, with the predictors being CPI, unemployment, and Fed funds rate surprises on the same day. We would use the function, auto.arima(), and the response variable being the volatility series; the three surprise variables would be included in "xreg", without a seasonal component. The function would automatically choose the AR and MA orders based on information criteria. It would evidently choose ARIMA(5,1,4). We decided to use the ARIMAX model because it helps us in understanding whether macro surprises provide extra predictive information for volatility beyond what can be explained by past volatility alone.
+
+    GARCH(1,1) was another time-series model we used, which was part of the rugarch package. In this model, the today's volatility is dependent on three things: a constant, yesterday's squared shocked, and yesterday's volatility. This is like a normal setup found in finance because it helps with modeling volatility clustering, where periods of high volatility often shows up in consecutive days instead of just a single random spike. In our project, we used a simple GARCH(1,1) model on the daily volatility series and did not include the macro surprises directly in the variance equation because we want to understand how volatility behaves on its own. For both models, the ARIMAX and GARCH models, we generated forecasts of daily volatility on the test data and evaluate how accurate they were using RMSE (root mean squared error) and MAE (mean absolute error), where a small value for both metrics means that the model's predictions are close to the true volatility.
+
+4.  **Data Analysis Results** – Present and interpret your main findings. Include relevant figures and tables that support your discussion.
+
+    **Regression Analysis**
+
     a\) Linear Regression
+
+    Goal: Estimate the underlying linear relationship between the economic indicators and volatility
 
     ```{r}
     #Run linear regression 
@@ -506,105 +546,29 @@ message: false
     sens
     ```
 
-    ```{r}
-    # ---- Interpretation Functions ----
-    interpret_effect <- function(name, est, se) {
-      sprintf(
-        "A one-unit %s difference changes daily SPY volatility by %.2f%% (robust SE = %.4f).",
-        name, est * 100, se
-      )
-    }
+    **Insight #1:**
 
-    interpret_day_effect <- function(term, pct) {
-      event_name <- dplyr::case_when(
-        term == "cpi_day"   ~ "CPI release days",
-        term == "unemp_day" ~ "Unemployment report days",
-        term == "fed_day"   ~ "Fed rate decision days",
-        TRUE ~ term
-      )
-      
-      sprintf(
-        "On %s, daily SPY volatility is estimated to change by %.2f%%.",
-        event_name, pct
-      )
-    }
-    ```
+    A one-unit CPI difference changes daily SPY volatility by -0.24% (Robust Standard Error = 0.0066).
 
-    ```{r}
-    # ---- Print Surprise/Difference Effects ----
-    cat(
-      interpret_effect(
-        "CPI",
-        robust_df$estimate[robust_df$term == "cpi_diff"],
-        robust_df$std.error[robust_df$term == "cpi_diff"]
-      ),
-      "\n"
-    )
+    A one-unit Unemployment difference changes daily SPY volatility by 0.94% (Robust Standard Error = 0.0012).
 
-    cat(
-      interpret_effect(
-        "Unemployment",
-        robust_df$estimate[robust_df$term == "unemp_diff"],
-        robust_df$std.error[robust_df$term == "unemp_diff"]
-      ),
-      "\n"
-    )
+    A one-unit Fed Funds Rate difference changes daily SPY volatility by -1.74% (Robust Standard Error = 0.0046).
 
-    cat(
-      interpret_effect(
-        "Fed Funds Rate",
-        robust_df$estimate[robust_df$term == "fed_diff"],
-        robust_df$std.error[robust_df$term == "fed_diff"]
-      ),
-      "\n"
-    )
-    ```
+    **Insight #2:**
 
-    ```{r}
-    # ---- Print Event-Day Effects ----
-    cat(
-      interpret_day_effect(
-        "cpi_day",
-        robust_df$estimate[robust_df$term == "cpi_day"] * 100
-      ),
-      "\n"
-    )
+    On CPI release days, daily SPY volatility is estimated to change by 0.02%.
 
-    cat(
-      interpret_day_effect(
-        "unemp_day",
-        robust_df$estimate[robust_df$term == "unemp_day"] * 100
-      ),
-      "\n"
-    )
+    On Unemployment report days, daily SPY volatility is estimated to change by -0.10%.
 
-    cat(
-      interpret_day_effect(
-        "fed_day",
-        robust_df$estimate[robust_df$term == "fed_day"] * 100
-      ),
-      "\n"
-    )
-    ```
+    On Fed rate decision days, daily SPY volatility is estimated to change by 0.19%
 
-    ```{r}
-    #Special Case: all_three
-    event_interpret_three <- robust_df %>%
-      filter(term == "all_three") %>%
-      mutate(
-        pct_change = estimate * 100,
-        interpretation = paste0(
-          "On days when CPI, unemployment, and the Fed decision are all released, ",
-          "volatility changes by ", round(pct_change, 2), "% on the event day."
-        )
-      )
+    **Insight #3:**
 
-    event_interpret_three$interpretation
-    ```
+    On days when CPI, unemployment, and the Fed decision are all released, volatility changes by -0.32% on the event day.
 
     b\) Logistical Regression
 
-    ```{r}
+    ```{r, results='hide'}
     # Compute median
     vol_median <- median(data$spy_vol, na.rm = TRUE)
 
@@ -643,47 +607,45 @@ message: false
     summary(log_model)
     ```
 
-    ```{r}
-    model_summary <- summary(log_model)
+    **Intrepretation:**
 
-    r2  <- model_summary$r.squared
-    adj_r2 <- model_summary$adj.r.squared
+    **cpi_diff**: A one-unit increase in CPI surprise is associated with an odds ratio of `exp(0.19176) = 1.21`. This means the odds of high volatility increase by 21%, holding all other variables constant.
+
+    **cpi_day**: Each additional day after the CPI release corresponds to an odds ratio of `exp(-0.02803) = 0.97`. The odds of high volatility decrease by about 3% per day after the CPI release.
+
+    **unemp_diff**: A one-unit increase in unemployment surprise is associated with\
+    an odds ratio of `exp(1.64023) = 5.16`. The odds of high volatility are over 5 times higher, all else equal.
+
+    **unemp_day**: Each additional day after the unemployment release corresponds to\
+    an odds ratio of `exp(-0.20142) = 0.82`. The odds of high volatility decrease by 18% per day after the unemployment release.
+
+    **fed_diff**: A one-unit increase in the Fed surprise (difference between actual and previous) yields\
+    an odds ratio of `exp(-1.55012) = 0.21`. The odds of high volatility decrease by 79% for larger rate-decision surprises.
+
+    **fed_day**: Each additional day after the Fed announcement corresponds to an odds ratio of `exp(-0.14143) = 0.87`. This indicates a 13% decrease in odds of high volatility per day.
+
+    **all_three**: When all three indicators (CPI, unemployment, Fed) appear within the same month, the odds ratio is `exp(0.13583) = 1.15`. This means a 15% increase in odds of high volatility compared to months without all three.
+
+    ```{r}
     aic_val <- AIC(log_model)
     bic_val <- BIC(log_model)
     # ---- RMSE & MAE ----
-    preds <- model1$fitted.values
-    actual <- model1$model[, 1]   # first column is the dependent variable
 
-    rmse_val <- sqrt(mean((actual - preds)^2))
-    mae_val  <- mean(abs(actual - preds))
-
-    cat("R²: ", r2, "\n")
-    cat("Adjusted R²: ", adj_r2, "\n")
     cat("AIC: ", aic_val, "\n")
     cat("BIC: ", bic_val, "\n")
-    cat("RMSE: ", rmse_val, "\n")
-    cat("MAE: ", mae_val, "\n")
     ```
 
-    ```{r}
-    # Predict probabilities of high volatility
+    ```{r, echo=FALSE, message=FALSE, warning=FALSE}
     test_probs <- predict(log_model, newdata = test_data, type = "response")
-
-    # Convert probabilities → class labels using 0.5 threshold
-    test_pred <- ifelse(test_probs > 0.5, 1, 0)
-
-    # Convert to factor so confusionMatrix works
-    test_pred <- factor(test_pred, levels = c(0,1))
+    test_pred <- factor(ifelse(test_probs > 0.5, 1, 0), levels = c(0,1))
     true_labels <- factor(test_data$high_vol, levels = c(0,1))
 
+    cm <- confusionMatrix(test_pred, true_labels, positive = "1")
 
-    #Confusion Matrix + Metrics
+    # Print just the confusion matrix and accuracy
+    print(cm$table)
+    cat("\n\nAccuracy :", round(cm$overall["Accuracy"], 4))
 
-    confusionMatrix(
-      data = as.factor(test_pred),
-      reference = as.factor(true_labels),
-      positive = "1"     # high volatility = positive class
-    )
 
     ```
 
@@ -702,7 +664,11 @@ message: false
 
     ```
 
-    **Time-Series Analysis**
+    Based on the performance we see, the accuracy for logistical regression was only 0.5377 therefore this might not be ther best model to use. The AUC curve is 0.598, which shows that the model is only performing slightly higher than a random guess.
+
+    Therefore, using logistical regression to predict high or low volatility does not give the best results.
+
+    **Time Series Analysis**
 
     ```{r}
     library(forecast)
@@ -752,7 +718,7 @@ message: false
     ```
 
     ```{r}
-     #Model Comparison + Coeffs
+    #Model Comparison + Coeffs
     #GARCH(1,1) model on volatility (no xreg)
     garch_spec <- ugarchspec(
       variance.model = list(
@@ -799,6 +765,39 @@ message: false
 
     Overall, when looking at the comparison for both models, ARIMAX and GARCH, we can see that they capture the main patterns in SPY volatility, and their performance on the new data were pretty similar. GARCH(1,1) has a slightly better performance in RMSE because how well the model can capture volatility clustering and extreme moves more efficiently. ARIMAX has the better end when it comes to MAE because on normal days, its predictions are slightly closer on average. With this information and the fact that the macro surprise coefficients in the ARIMAX model are small and not statistically significant, we can confidently say that most of the short-term predictability in SPY volatility comes from its own past behavior, rather from monthly macroeconomic surprises. Although macro announcements still matter, the day-to-day volatility we see in the market is driven more by internal market dynamics than by any single CPI, unemployment, or Fed release.
 
-5.  **Conclusion** – Summarize the key takeaways, note any limitations, and suggest possible extensions or future directions.
+    **Comparing Regression with Time Series**
 
-6.  **Author Contribution Statement** – Briefly describe each team member’s contribution.
+    When compared to time series, the linear regression model performs substantially worse. Its R² of only about 0.06 (with an adjusted R² of 0.057), indicating the model explains barely 6% of the variation in daily SPY volatility. It does not capture the underlying structure in the data. In linear regression, the RMSE (0.01145) and MAE (0.00723). These values are roughly double the error levels achieved by ARIMAX and GARCH. This shows the limitation in linear regression because it cannot account for autocorrelation, volatility clustering, or lagged dependence, all of which are central characteristics of financial volatility. In contrast, ARIMAX incorporates lagged differences and potential exogenous effects, and GARCH explicitly models time-varying volatility. As a result, both ARIMAX and GARCH provide far more accurate and realistic representations of daily volatility behavior. The linear regression model serves as a useful baseline, but its low explanatory power and comparatively high prediction error make it the weakest performer of the three.
+
+5.  **Conclusion**
+
+    In this project, we examined how month-to-month changes in major U.S. macroeconomic indicators—CPI, the unemployment rate, and the Federal Funds Rate-affect short-term volatility in the SPY ETF. Using a combination of exploratory data analysis, regression modeling, and time-series methods, we identified several important patterns about how financial markets respond to new economic information.
+
+    Our regression models show that while macroeconomic surprises do influence volatility, the effects are generally small. CPI and unemployment surprises rarely produce statistically significant changes in SPY volatility, which is consistent with their highly stable and predictable month-to-month behavior (as shown in our EDA). In contrast, surprises in the Federal Funds Rate-an indicator known for producing sudden policy shocks-show a modest but statistically significant relationship with short-term volatility. This aligns with economic intuition: markets react more strongly when the Federal Reserve adjusts interest rates.
+
+    Our ARIMA time-series model provided a complementary perspective by forecasting future volatility using only SPY’s historical patterns. Diagnostics showed that the ARIMA(2,1,5) model captured most of the autocorrelation structure, and the forecast indicated a stable return toward average volatility levels. This suggests that much of the day-to-day volatility is driven by internal market dynamics rather than macroeconomic announcements. The comparison between regression and ARIMA models highlights a key finding: past volatility explains far more of today’s volatility than newly released macroeconomic data. This aligns with the broader literature on volatility clustering.
+
+    There are several limitations worth noting. First, we only modeled short-term volatility around release dates, so longer reaction windows may reveal different effects. Second, macroeconomic data—especially CPI and unemployment—are slow-moving by nature, which reduces their explanatory power in predicting rapid shifts in volatility. Finally, our models do not incorporate other major market events (earnings cycles, geopolitical events, market sentiment) that may overshadow macro releases.
+
+    Future extensions for this project could include:Expanding the event window to examine multi-day volatility spillovers, Using a GARCH-X model to directly incorporate macro surprises into the volatility equation, Separating high-volatility and low-volatility regimes using a Markov-switching model, Applying machine learning models—such as random forests—to capture nonlinear relationships
+
+    Overall, our findings suggest that while macroeconomic announcements matter, their short-term impact on volatility is modest compared to the effect of market-driven volatility dynamics.
+
+6.  **Author Contribution Statement**
+
+    Dhruv Nasit, Felicia Vijayarangam, Joseph Doan, and Eric Feng jointly conceived the project and defined the research question.
+
+    **Dhruv Nasit** developed the computational workflow, performed all data merging and cleaning for the macroeconomic and SPY datasets, carried out the exploratory data analysis, implemented the event-study volatility calculations, built the regression models, and generated all associated figures.
+
+    **Felicia Vijayarangam** performed the initial preprocessing of the macroeconomic datasets described in the Data Description section, contributed to the EDA setup prior to modeling, and wrote portions of the Methodology and Data Analysis sections related to the regression framework.
+
+    **Joseph Doan** drafted the Introduction and the Time-Series Methodology section, contributed to the written interpretation of both the ARIMA and GARCH models, and assisted in organizing the structure and narrative of the full report.
+
+    **Eric Feng** developed the ARIMA and GARCH time-series models, produced the accompanying diagnostics and interpretations, and contributed feedback on the statistical validity and clarity of the modeling results.
+
+    All authors discussed the findings, contributed to the interpretation of the results, and helped revise the final manuscript.
+
+7.  **Code Appendix**
+
+    ```{r codeAppend, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+    ```
