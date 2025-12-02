@@ -325,9 +325,18 @@ execute:
 
     **Regression Analysis:**
 
-    a\) Our goal is to create a linear regression model where the response variable is SPY volatility and the independent variables are the CPI, Federal Fund Rate, the Unemployment monthly difference (Actual - Predicted). We also have the dummy variables of whether or not the indicator came out that month.
+    a\) Our first model is a multiple linear regression model to estimate how macroeconomic surprises relate to daily SPY volatility. The model expresses volatility as a linear function of several predictors, including the CPI surprise, unemployment surprise, Federal Funds Rate surprise, and indicator variables marking the release days of each announcement. We also include a dummy variable representing whether the CPI, unemployment, and the Fed decision are released in a given month. In formal notation, the model is:
 
-    The goal of Linear Regression is to input parameters that we want to estimate.
+    $$ \\text{spy_vol}\_t = \\beta_0 + \\beta_1\\,(\\text{CPI_diff})\_t + \\beta_2\\,(\\text{CPI_day})\_t+ \\beta_3\\,(\\text{Unemp_diff})\_t+ \\beta_4\\,(\\text{Unemp_day})\_t+ \\beta_5\\,(\\text{Fed_diff})\_t+ \\beta_6\\,(\\text{Fed_day})\_t+ \\beta_7\\,(\\text{AllThree})\_t+ \\varepsilon_t
+    $$
+
+    Linear regression allows us to estimate a straight-line relationship between SPY volatility and the predictors. Each coefficient reflects how the response variable is expected to change when a predictor increases by one unit, holding all other variables constant. These estimates reveal the direction of the effect (whether volatility increases or decreases), the magnitude of the effect, and the statistical significance of each predictor.
+
+    In this model, the key inputs are the macroeconomic “surprise” variables, defined as: $Diff=Actual−Previous$
+
+    which capture the new information that becomes available to investors at the moment of release. Since financial markets react primarily when new information is revealed, we include release day indicators (dummy variables) to mark when each announcement becomes public. The “All Three” dummy identifies when CPI, unemployment, and the Fed rate decision are all released in a given month, allowing us to test whether simultaneous announcements produce a stronger market reaction.
+
+    Overall, this regression framework provides an interpretable and statistically grounded way to quantify how daily SPY volatility responds immediately to new macroeconomic information. It serves as a baseline model before introducing more advanced time-series models that account for the serial dependence and clustering inherent in financial volatility.
 
     We want to specifically look at the daily SPY volatility between 2008 and 2015 because this period reflects the global financial crisis. Therefore, looking at this special time period gives us key insight into market volatility during that period.
 
@@ -443,7 +452,9 @@ execute:
 
     *In our study, we acknowledge that these are only a few drivers of the SPY. However, for this exploration, our focus is on how much these factors move the market when they are first released*
 
-    b\) Our goal is to create a multilogistical regression model where the response variable is high or low SPY volaitlity. We need to look at our market volatility distribution to see if there is a particular threshold of market volatility that we consider high versus low.
+    b\) Logistical Regression:
+
+    Our goal is to create a multilogistical regression model where the response variable indicates whether daily SPY volatility is high or low. To define this binary outcome, we first examined the distribution of market volatility using a histogram and summary statistics. Based on this distribution, we selected a threshold that separates normal volatility levels from unusually large movements. Using this threshold allows us to convert continuous volatility into a 0/1 classification suitable for logistic regression.
 
     ```{r}
     hist(
@@ -469,11 +480,18 @@ execute:
     )
     ```
 
-    Our threshold is set to divide the spy_vol by the median. The media of spy_vol is 0.005756937. Therefore, we will consider high vol \> 0.005756937 \> low vol. There are 1030 low vol and 1029 high vol labels. We create a column called high_vol for the labels of high volatility or low volatility.
+    Our threshold is set at the median of `spy_vol`, which is 0.005756937. Values above this median are labeled as high volatility, and values below are labeled as low volatility. This produces 1030 low-volatility days and 1029 high-volatility days. We use these labels to create the binary variable `high_vol`
+
+    Binary logistic regression estimates the probability that an observation belongs to one of two categories—in this case, the probability that a trading day exhibits high volatility rather than low volatility. The method uses the **logit link function**, which transforms probabilities into log-odds so the model can describe them using a linear combination of predictors. Each coefficient represents how its corresponding independent variable shifts the likelihood of high market volatility. Positive coefficients increase the probability of high volatility, while negative coefficients decrease it. After the model estimates these coefficients, it converts the log-odds back into a predicted probability between 0 and 1, allowing us to classify each day as high or low volatility.
+
+    Logistic regression is well suited for this task because it directly models binary outcomes, produces interpretable coefficients, and provides predicted probabilities that allow us to assess model performance.
+
+    \$\$\$\$\\log\\left(\\frac{P(\\text{high_vol}\_t = 1)}{1 - P(\\text{high_vol}\_t = 1)}\\right)= \\beta_0 + \\beta_1\\,(\\text{CPI_diff})\_t+ \\beta_2\\,(\\text{CPI_day})\_t+ \\beta_3\\,(\\text{Unemp_diff})\_t+ \\beta_4\\,(\\text{Unemp_day})\_t+ \\beta_5\\,(\\text{Fed_diff})\_t+ \\beta_6\\,(\\text{Fed_day})\_t+ \\beta_7\\,(\\text{AllThree})\_t
+    $$
 
     *We acknowledge that high volatility may have a different standard threshold but we are creating this model based on the median market volatility that we have observed in this dataset*
 
-    The independent variables are still the CPI, Federal Fund Rate, and the Unemployment monthly difference (Actual - Predicted). We also have the days of the release. Our model is predicting whether or not these variables can predict whether the market has high or low volatility (above or below 0.005756937)
+    The independent variables are still the CPI, Federal Fund Rate, and the Unemployment monthly difference (Actual - Predicted). We also have the days of the release. Our model is predicting whether or not these variables can predict whether the market experiences high or low volatility (above or below 0.005756937)
 
     **Time-Series Analysis:**
 
@@ -740,8 +758,7 @@ execute:
     garch_fit <- ugarchfit(spec = garch_spec, data = train_vol)
 
     cat("\n================= GARCH(1,1) Fit =================\n")
-    show(garch_fit)
-
+    print(garch_fit)
     # Forecast for test period
     garch_fc <- ugarchforecast(
       garch_fit,
@@ -756,17 +773,20 @@ execute:
     cat("\nGARCH Model Performance\n")
     cat("RMSE:", round(garch_rmse, 6), "\n")
     cat("MAE :", round(garch_mae,  6), "\n")
-       
-    Model_Comparison <- data.frame(
-      Model = c("ARIMAX", "GARCH(1,1)"),
-      RMSE  = c(arimax_rmse, garch_rmse),
-      MAE   = c(arimax_mae,  garch_mae)
-      )
     ```
 
     The GARCH(1,1) model gave parameter estimates that look normal for financial data. The estimated mean of volatility was about 0.0069. For the variance part (alpha), it was about 0.11 – this controls how much yesterday's squared shock matters. Also, beta, which controls how much yesterday's variance matters, was about 0.88. The sum of alpha and beta was roughly around 0.99, which is close to 1. This tell us that volatility is highly persistent, and when volatility becomes high, it will stay high for a while before slowly coming back down. On the test set, the GARCH model had an RMSE of about 0.00567 and an MAE of about 0.00445.
 
     **GARCH model vs. ARIMAX model**
+
+    ```{r}
+    Model_Comparison <- data.frame(
+      Model = c("ARIMAX", "GARCH(1,1)"),
+      RMSE  = c(arimax_rmse, garch_rmse),
+      MAE   = c(arimax_mae,  garch_mae)
+      )
+    print(Model_Comparison)
+    ```
 
     Comparing the GARCH model to the ARIMAX model, GARCH has a slightly lower RMSE but a slightly higher MAE. These results reveal that GARCH is a bit better at capturing large volatility spikes, which would affect the RMSE. On the other hand, ARIMAX does a better job at capturing smaller day-to-day movements, which MAE focuses on.
 
